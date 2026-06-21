@@ -1,0 +1,2196 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#05070f" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Что это стоит" />
+  <title>Что это и сколько стоит?</title>
+
+  <style>
+    /*
+      ============================================================
+      “Что это и сколько стоит?”
+      Один файл index.html: HTML + CSS + JS.
+      Без бэкенда, без React/Vue/Angular, готово для GitHub Pages.
+
+      Главное изменение этой версии:
+      - камера запускается сразу после открытия сайта;
+      - главный экран не превращается в длинную страницу;
+      - история и API-ключ вынесены в отдельные вкладки сверху;
+      - снизу круглая кнопка съёмки как в приложении камеры;
+      - по центру прицел для наведения объекта;
+      - все цены показываются только в рублях;
+      - вместо смайликов используются встроенные SVG-иконки;
+      - изображение камеры не зеркалится;
+      - после нажатия на затвор видео останавливается и остаётся снятый кадр.
+      ============================================================
+    */
+
+    :root {
+      --bg: #05070f;
+      --panel: rgba(18, 26, 38, .62);
+      --panel-strong: rgba(20, 30, 44, .82);
+      --panel-soft: rgba(255, 255, 255, .075);
+      --line: rgba(255, 255, 255, .14);
+      --line-strong: rgba(255, 255, 255, .24);
+      --text: rgba(255, 255, 255, .94);
+      --muted: rgba(255, 255, 255, .68);
+      --muted-2: rgba(255, 255, 255, .46);
+      --accent: #55d7ff;
+      --accent-2: #7c5cff;
+      --good: #41f2a6;
+      --warn: #ffd166;
+      --bad: #ff5c7a;
+      --shadow: 0 28px 90px rgba(0, 0, 0, .45);
+      --blur: blur(28px) saturate(155%);
+      --radius-xl: 34px;
+      --radius-lg: 24px;
+      --radius-md: 18px;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --header-h: 78px;
+      --font: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+    }
+
+    body {
+      position: fixed;
+      inset: 0;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: geometricPrecision;
+      touch-action: manipulation;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background:
+        radial-gradient(circle at 12% 12%, rgba(124, 92, 255, .34), transparent 32%),
+        radial-gradient(circle at 88% 10%, rgba(85, 215, 255, .24), transparent 30%),
+        radial-gradient(circle at 70% 88%, rgba(65, 242, 166, .16), transparent 34%),
+        linear-gradient(135deg, #05070f, #0b1320 58%, #03050a);
+    }
+
+    button, input, textarea {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      color: inherit;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: .55;
+    }
+
+    input, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      outline: 0;
+      color: var(--text);
+      background: rgba(255, 255, 255, .075);
+      border-radius: 18px;
+      padding: 15px 16px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+    }
+
+    input:focus, textarea:focus {
+      border-color: rgba(85, 215, 255, .58);
+      box-shadow: 0 0 0 4px rgba(85, 215, 255, .13), inset 0 1px 0 rgba(255,255,255,.08);
+    }
+
+    .hidden { display: none !important; }
+
+    .icon {
+      width: 20px;
+      height: 20px;
+      flex: 0 0 auto;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+    }
+
+    .icon.fill {
+      fill: currentColor;
+      stroke: none;
+    }
+
+    .app {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      overflow: hidden;
+    }
+
+    .glass {
+      border: 1px solid var(--line);
+      background: linear-gradient(135deg, rgba(255,255,255,.13), rgba(255,255,255,.065));
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.16);
+    }
+
+    /* Верхняя панель: вкладки всегда доступны, но экран камеры не скроллится. */
+    .topbar {
+      position: fixed;
+      left: 12px;
+      right: 12px;
+      top: calc(10px + var(--safe-top));
+      height: var(--header-h);
+      z-index: 30;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 28px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      width: 48px;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      border-radius: 17px;
+      background:
+        radial-gradient(circle at 28% 24%, rgba(255,255,255,.65), transparent 20%),
+        linear-gradient(135deg, var(--accent-2), var(--accent));
+      box-shadow: 0 18px 42px rgba(85,215,255,.25);
+    }
+
+    .brand-title {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      min-width: 0;
+    }
+
+    .brand-title strong {
+      font-size: 16px;
+      letter-spacing: -.25px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .brand-title span {
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .tabs {
+      justify-self: center;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, .22);
+      border: 1px solid rgba(255,255,255,.1);
+      min-width: 0;
+    }
+
+    .tab-btn {
+      height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 15px;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      transition: transform .18s ease, background .18s ease, color .18s ease;
+      white-space: nowrap;
+      font-weight: 750;
+    }
+
+    .tab-btn:hover { color: var(--text); background: rgba(255,255,255,.07); }
+    .tab-btn:active { transform: scale(.96); }
+    .tab-btn.active {
+      color: #061018;
+      background: linear-gradient(135deg, rgba(255,255,255,.92), rgba(140,232,255,.84));
+      box-shadow: 0 10px 26px rgba(85,215,255,.18), inset 0 1px 0 rgba(255,255,255,.5);
+    }
+
+    .status-pill {
+      height: 44px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 13px;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, .22);
+      border: 1px solid rgba(255,255,255,.1);
+      color: var(--muted);
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    .status-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--bad);
+      box-shadow: 0 0 20px rgba(255,92,122,.55);
+    }
+
+    .status-dot.ok {
+      background: var(--good);
+      box-shadow: 0 0 20px rgba(65,242,166,.55);
+    }
+
+    /* Страницы-вкладки. Камера не скроллится, внутренние вкладки скроллятся отдельно. */
+    .view {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      pointer-events: none;
+      transform: scale(.985);
+      transition: opacity .22s ease, transform .22s ease;
+    }
+
+    .view.active {
+      opacity: 1;
+      pointer-events: auto;
+      transform: scale(1);
+    }
+
+    .camera-view {
+      background: #03050a;
+    }
+
+    .camera-stage {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+    }
+
+    .camera-stage video,
+    .camera-stage img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: #05070f;
+    }
+
+    /* Камера больше НЕ зеркалится: пользователь видит объект так же, как он выглядит в реальности. */
+    .camera-stage video {
+      z-index: 1;
+      transform: none;
+    }
+
+    /* После снимка кадр кладётся поверх live-видео, поэтому картинка реально «замирает». */
+    .camera-stage img {
+      z-index: 2;
+    }
+
+    .camera-gradient {
+      position: absolute;
+      inset: 0;
+      z-index: 6;
+      pointer-events: none;
+      background:
+        linear-gradient(to bottom, rgba(0,0,0,.58), transparent 28%, transparent 64%, rgba(0,0,0,.72)),
+        radial-gradient(circle at center, transparent 0 24%, rgba(0,0,0,.16) 60%, rgba(0,0,0,.45) 100%);
+    }
+
+    .camera-placeholder {
+      position: absolute;
+      inset: 0;
+      z-index: 5;
+      display: grid;
+      place-items: center;
+      padding: 26px;
+      text-align: center;
+      background:
+        radial-gradient(circle at 50% 35%, rgba(85,215,255,.19), transparent 26%),
+        linear-gradient(135deg, #09101c, #05070f);
+    }
+
+    .placeholder-card {
+      width: min(520px, 92vw);
+      padding: 28px;
+      border-radius: var(--radius-xl);
+    }
+
+    .placeholder-card h1 {
+      margin: 18px 0 8px;
+      font-size: clamp(28px, 5vw, 48px);
+      letter-spacing: -1.5px;
+      line-height: .98;
+    }
+
+    .placeholder-card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .reticle-wrap {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+      z-index: 7;
+    }
+
+    .reticle {
+      width: min(62vw, 390px);
+      height: min(62vw, 390px);
+      max-height: 48vh;
+      position: relative;
+      border-radius: 36px;
+      filter: drop-shadow(0 20px 40px rgba(0,0,0,.4));
+      animation: reticlePulse 2.8s ease-in-out infinite;
+    }
+
+    .reticle::before,
+    .reticle::after {
+      content: "";
+      position: absolute;
+      inset: 50% auto auto 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255,255,255,.72);
+      box-shadow: 0 0 20px rgba(85,215,255,.45);
+    }
+
+    .reticle::before { width: 2px; height: 68px; }
+    .reticle::after { width: 68px; height: 2px; }
+
+    .corner {
+      position: absolute;
+      width: 68px;
+      height: 68px;
+      border-color: rgba(255,255,255,.86);
+      border-style: solid;
+      filter: drop-shadow(0 0 16px rgba(85,215,255,.35));
+    }
+
+    .corner.tl { top: 0; left: 0; border-width: 4px 0 0 4px; border-radius: 28px 0 0 0; }
+    .corner.tr { top: 0; right: 0; border-width: 4px 4px 0 0; border-radius: 0 28px 0 0; }
+    .corner.bl { bottom: 0; left: 0; border-width: 0 0 4px 4px; border-radius: 0 0 0 28px; }
+    .corner.br { bottom: 0; right: 0; border-width: 0 4px 4px 0; border-radius: 0 0 28px 0; }
+
+    .reticle-circle {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 116px;
+      height: 116px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,.42);
+      box-shadow: inset 0 0 40px rgba(85,215,255,.08);
+    }
+
+    .reticle-label {
+      position: absolute;
+      left: 50%;
+      top: calc(50% + min(34vw, 222px));
+      transform: translateX(-50%);
+      z-index: 8;
+      pointer-events: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      max-width: calc(100vw - 34px);
+      padding: 10px 14px;
+      border-radius: 999px;
+      color: rgba(255,255,255,.84);
+      background: rgba(0,0,0,.28);
+      border: 1px solid rgba(255,255,255,.12);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      font-size: 13px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    @keyframes reticlePulse {
+      0%, 100% { transform: scale(1); opacity: .92; }
+      50% { transform: scale(1.025); opacity: 1; }
+    }
+
+    .bottom-controls {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: calc(16px + var(--safe-bottom));
+      z-index: 20;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 16px;
+      padding: 0 max(18px, calc((100vw - 760px) / 2));
+      pointer-events: none;
+    }
+
+    .side-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      pointer-events: auto;
+    }
+
+    .side-actions.right { justify-content: flex-end; }
+
+    .round-btn {
+      width: 56px;
+      height: 56px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: rgba(255,255,255,.13);
+      border: 1px solid rgba(255,255,255,.16);
+      backdrop-filter: blur(22px) saturate(150%);
+      -webkit-backdrop-filter: blur(22px) saturate(150%);
+      box-shadow: 0 16px 40px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.18);
+      color: rgba(255,255,255,.9);
+      transition: transform .16s ease, background .16s ease;
+    }
+
+    .round-btn:active { transform: scale(.92); }
+    .round-btn:hover { background: rgba(255,255,255,.18); }
+
+    .shutter {
+      width: 92px;
+      height: 92px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      pointer-events: auto;
+      background: rgba(255,255,255,.22);
+      border: 2px solid rgba(255,255,255,.7);
+      box-shadow: 0 24px 60px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.25);
+      backdrop-filter: blur(18px) saturate(150%);
+      -webkit-backdrop-filter: blur(18px) saturate(150%);
+      transition: transform .16s ease, filter .16s ease;
+    }
+
+    .shutter::before {
+      content: "";
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.92);
+      box-shadow: inset 0 -8px 20px rgba(0,0,0,.08);
+    }
+
+    .shutter:active { transform: scale(.9); filter: brightness(.88); }
+
+    .analyzing .shutter::before {
+      width: 54px;
+      height: 54px;
+      border: 6px solid rgba(5,7,15,.18);
+      border-top-color: rgba(5,7,15,.82);
+      background: transparent;
+      animation: spin .8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .top-hint {
+      position: absolute;
+      left: 50%;
+      top: calc(var(--header-h) + var(--safe-top) + 24px);
+      transform: translateX(-50%);
+      z-index: 12;
+      width: min(620px, calc(100% - 28px));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 22px;
+      color: rgba(255,255,255,.86);
+      background: rgba(0,0,0,.3);
+      border: 1px solid rgba(255,255,255,.13);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 18px 50px rgba(0,0,0,.28);
+    }
+
+    .top-hint small {
+      color: var(--muted);
+      font-weight: 650;
+      line-height: 1.35;
+    }
+
+    .mini-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 40px;
+      padding: 0 13px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.13);
+      color: rgba(255,255,255,.9);
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .mini-btn.primary {
+      color: #061018;
+      background: linear-gradient(135deg, #fff, #82e8ff);
+    }
+
+    /* Вкладки История и API. Это отдельные экраны, внутри можно листать. */
+    .page-view {
+      padding: calc(var(--header-h) + var(--safe-top) + 28px) 16px calc(20px + var(--safe-bottom));
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .page-inner {
+      width: min(980px, 100%);
+      margin: 0 auto;
+      display: grid;
+      gap: 16px;
+    }
+
+    .page-title {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 4px;
+    }
+
+    .page-title h2 {
+      margin: 0;
+      font-size: clamp(32px, 5vw, 56px);
+      letter-spacing: -1.8px;
+      line-height: .95;
+    }
+
+    .page-title p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .panel {
+      border-radius: var(--radius-xl);
+      padding: clamp(18px, 3vw, 28px);
+    }
+
+    .panel h3 {
+      margin: 0 0 10px;
+      font-size: 22px;
+      letter-spacing: -.5px;
+    }
+
+    .panel p, .hint {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .step-list {
+      display: grid;
+      gap: 10px;
+      margin: 16px 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .step-list li {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 12px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.1);
+      background: rgba(255,255,255,.055);
+      color: rgba(255,255,255,.82);
+    }
+
+    .step-num {
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: #061018;
+      background: linear-gradient(135deg, #fff, #82e8ff);
+      font-weight: 950;
+      flex: 0 0 auto;
+    }
+
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .btn {
+      min-height: 48px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      padding: 0 16px;
+      border-radius: 18px;
+      background: rgba(255,255,255,.105);
+      border: 1px solid rgba(255,255,255,.14);
+      color: rgba(255,255,255,.9);
+      font-weight: 850;
+      text-decoration: none;
+      transition: transform .16s ease, background .16s ease;
+    }
+
+    .btn:hover { background: rgba(255,255,255,.15); }
+    .btn:active { transform: scale(.97); }
+
+    .btn.primary {
+      color: #061018;
+      background: linear-gradient(135deg, #fff, #82e8ff);
+      box-shadow: 0 16px 34px rgba(85,215,255,.18);
+    }
+
+    .btn.good {
+      color: #04140d;
+      background: linear-gradient(135deg, #d9fff0, #41f2a6);
+    }
+
+    .btn.bad {
+      color: #fff;
+      background: linear-gradient(135deg, rgba(255,92,122,.9), rgba(255,92,122,.46));
+      border-color: rgba(255,255,255,.16);
+    }
+
+    .key-card {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 14px;
+      border-radius: 22px;
+      background: rgba(0,0,0,.2);
+      border: 1px solid rgba(255,255,255,.11);
+      margin: 14px 0;
+    }
+
+    .key-mask {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      color: rgba(255,255,255,.88);
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .history-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .history-card {
+      display: grid;
+      grid-template-columns: 86px 1fr auto;
+      gap: 14px;
+      align-items: center;
+      padding: 12px;
+      border-radius: 24px;
+      background: rgba(255,255,255,.075);
+      border: 1px solid rgba(255,255,255,.11);
+    }
+
+    .history-card img {
+      width: 86px;
+      height: 86px;
+      object-fit: cover;
+      border-radius: 18px;
+      background: rgba(255,255,255,.08);
+    }
+
+    .history-card h3 {
+      margin: 0 0 6px;
+      font-size: 17px;
+      letter-spacing: -.25px;
+    }
+
+    .history-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .price-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 40px;
+      padding: 0 12px;
+      border-radius: 999px;
+      color: #061018;
+      background: linear-gradient(135deg, #fff, #82e8ff);
+      font-weight: 950;
+      white-space: nowrap;
+    }
+
+    /* Результат анализа показывается отдельной нижней панелью поверх камеры. */
+    .result-sheet {
+      position: fixed;
+      left: 12px;
+      right: 12px;
+      bottom: calc(12px + var(--safe-bottom));
+      z-index: 40;
+      max-height: min(68vh, 720px);
+      display: grid;
+      grid-template-rows: auto 1fr;
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      transform: translateY(calc(100% + 26px));
+      opacity: 0;
+      pointer-events: none;
+      transition: transform .28s cubic-bezier(.2,.9,.2,1), opacity .28s ease;
+    }
+
+    .result-sheet.open {
+      transform: translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .sheet-head {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255,255,255,.1);
+      background: rgba(255,255,255,.045);
+    }
+
+    .sheet-thumb {
+      width: 54px;
+      height: 54px;
+      object-fit: cover;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.08);
+    }
+
+    .sheet-title {
+      min-width: 0;
+    }
+
+    .sheet-title h2 {
+      margin: 0;
+      font-size: 19px;
+      letter-spacing: -.4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .sheet-title p {
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .sheet-body {
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 16px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .data-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .data-card {
+      min-height: 84px;
+      padding: 12px;
+      border-radius: 20px;
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.1);
+    }
+
+    .data-card .k {
+      color: var(--muted-2);
+      font-size: 12px;
+      margin-bottom: 7px;
+    }
+
+    .data-card .v {
+      color: rgba(255,255,255,.9);
+      font-weight: 850;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+
+    .description-box {
+      padding: 14px;
+      border-radius: 22px;
+      background: rgba(0,0,0,.18);
+      border: 1px solid rgba(255,255,255,.1);
+      color: rgba(255,255,255,.82);
+      line-height: 1.5;
+    }
+
+    .warn-box {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 12px;
+      border-radius: 18px;
+      background: rgba(255,209,102,.11);
+      border: 1px solid rgba(255,209,102,.22);
+      color: rgba(255,235,190,.94);
+      line-height: 1.4;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: calc(130px + var(--safe-bottom));
+      transform: translate(-50%, 20px);
+      z-index: 80;
+      max-width: min(520px, calc(100vw - 28px));
+      padding: 12px 16px;
+      border-radius: 999px;
+      background: rgba(10, 14, 22, .76);
+      border: 1px solid rgba(255,255,255,.14);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      color: rgba(255,255,255,.9);
+      font-weight: 750;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s ease, transform .2s ease;
+      box-shadow: 0 18px 48px rgba(0,0,0,.34);
+      text-align: center;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    .file-input { display: none; }
+
+    @media (max-width: 820px) {
+      :root { --header-h: 74px; }
+
+      .topbar {
+        grid-template-columns: auto 1fr;
+        grid-template-rows: auto;
+        gap: 8px;
+      }
+
+      .brand-title span { display: none; }
+      .brand-mark { width: 46px; height: 46px; }
+      .status-pill { display: none; }
+
+      .tabs {
+        justify-self: stretch;
+        overflow: auto;
+        scrollbar-width: none;
+      }
+      .tabs::-webkit-scrollbar { display: none; }
+
+      .tab-btn {
+        height: 42px;
+        padding: 0 12px;
+        font-size: 14px;
+      }
+
+      .tab-btn span { display: none; }
+      .tab-btn .icon { width: 21px; height: 21px; }
+
+      .bottom-controls {
+        padding: 0 18px;
+      }
+
+      .shutter {
+        width: 86px;
+        height: 86px;
+      }
+
+      .shutter::before {
+        width: 65px;
+        height: 65px;
+      }
+
+      .reticle {
+        width: min(74vw, 360px);
+        height: min(74vw, 360px);
+      }
+
+      .reticle-label {
+        top: calc(50% + min(41vw, 205px));
+      }
+
+      .top-hint {
+        top: calc(var(--header-h) + var(--safe-top) + 18px);
+      }
+
+      .data-grid, .grid-2 {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .history-card {
+        grid-template-columns: 72px 1fr;
+      }
+
+      .history-card img {
+        width: 72px;
+        height: 72px;
+      }
+
+      .history-card .price-chip {
+        grid-column: 2;
+        width: fit-content;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .topbar {
+        left: 8px;
+        right: 8px;
+        border-radius: 24px;
+        padding: 9px;
+      }
+
+      .brand-title strong { display: none; }
+      .brand-mark { width: 44px; height: 44px; }
+
+      .data-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .result-sheet {
+        left: 8px;
+        right: 8px;
+        max-height: 72vh;
+      }
+
+      .sheet-head {
+        padding: 12px;
+      }
+
+      .page-view {
+        padding-left: 10px;
+        padding-right: 10px;
+      }
+
+      .page-title {
+        display: block;
+      }
+
+      .btn {
+        width: 100%;
+      }
+
+      .key-card {
+        grid-template-columns: 1fr;
+      }
+
+      .top-hint {
+        align-items: flex-start;
+        border-radius: 20px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app" id="app">
+    <header class="topbar glass">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path d="M4 13.5C4 8.25 8.25 4 13.5 4H20v6.5C20 15.75 15.75 20 10.5 20H4v-6.5Z"></path>
+            <path d="M8 16 16 8"></path>
+            <path d="M8.5 9.5h6v6"></path>
+          </svg>
+        </div>
+        <div class="brand-title">
+          <strong>Что это и сколько стоит?</strong>
+          <span>Камера, Gemini Vision и оценка в рублях</span>
+        </div>
+      </div>
+
+      <nav class="tabs" aria-label="Основные вкладки">
+        <button class="tab-btn active" data-tab="camera" type="button">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6H9l1.2-1.6A1 1 0 0 1 11 4h2a1 1 0 0 1 .8.4L15 6h2.5A2.5 2.5 0 0 1 20 8.5v8A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5v-8Z"></path><circle cx="12" cy="12.5" r="3.5"></circle></svg>
+          <span>Камера</span>
+        </button>
+        <button class="tab-btn" data-tab="history" type="button">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M4 5h16"></path><path d="M4 12h16"></path><path d="M4 19h16"></path><path d="M8 5v14"></path></svg>
+          <span>История</span>
+        </button>
+        <button class="tab-btn" data-tab="api" type="button">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M15 7.5a4 4 0 1 1-2.9-3.85"></path><path d="M14 10 21 3"></path><path d="M18 3h3v3"></path><path d="M8 14v6"></path><path d="M5 17h6"></path></svg>
+          <span>API</span>
+        </button>
+      </nav>
+
+      <div class="status-pill" title="Состояние API-ключа">
+        <span class="status-dot" id="keyDot"></span>
+        <span id="keyStateText">Нет ключа</span>
+      </div>
+    </header>
+
+    <main class="view camera-view active" id="view-camera">
+      <section class="camera-stage" aria-label="Камера">
+        <video id="video" autoplay playsinline muted></video>
+        <img id="previewImage" class="hidden" alt="Выбранное изображение" />
+        <div class="camera-placeholder" id="cameraPlaceholder">
+          <div class="placeholder-card glass">
+            <svg class="icon" viewBox="0 0 24 24" style="width:48px;height:48px;margin:auto;color:var(--accent)"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6H9l1.2-1.6A1 1 0 0 1 11 4h2a1 1 0 0 1 .8.4L15 6h2.5A2.5 2.5 0 0 1 20 8.5v8A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5v-8Z"></path><circle cx="12" cy="12.5" r="3.5"></circle></svg>
+            <h1>Включаю камеру</h1>
+            <p id="cameraPlaceholderText">Разреши доступ к камере. Если не хочется включать камеру, можно загрузить фото из галереи.</p>
+            <div class="btn-row" style="justify-content:center">
+              <button class="btn primary" id="retryCameraBtn" type="button">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"></path><path d="M21 4v6h-6"></path></svg>
+                Включить камеру
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="camera-gradient"></div>
+
+        <div class="reticle-wrap" aria-hidden="true">
+          <div class="reticle">
+            <span class="corner tl"></span>
+            <span class="corner tr"></span>
+            <span class="corner bl"></span>
+            <span class="corner br"></span>
+            <span class="reticle-circle"></span>
+          </div>
+        </div>
+        <div class="reticle-label">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M12 3v3"></path><path d="M12 18v3"></path><path d="M3 12h3"></path><path d="M18 12h3"></path><circle cx="12" cy="12" r="4"></circle></svg>
+          Наведи объект точно в центр
+        </div>
+      </section>
+
+      <div class="top-hint hidden" id="apiHint">
+        <small>Для анализа нужен бесплатный Gemini API Key. Камера работает, но распознавание без ключа не запустится.</small>
+        <button class="mini-btn primary" data-open-api type="button">Открыть API</button>
+      </div>
+
+      <section class="bottom-controls" aria-label="Кнопки камеры">
+        <div class="side-actions">
+          <button class="round-btn" id="galleryBtn" type="button" title="Загрузить фото">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M5 5h14v14H5z"></path><path d="m5 16 4-4 3 3 2-2 5 5"></path><circle cx="15.5" cy="8.5" r="1.5"></circle></svg>
+          </button>
+          <input class="file-input" id="fileInput" type="file" accept="image/*" />
+        </div>
+
+        <button class="shutter" id="shutterBtn" type="button" aria-label="Сделать снимок"></button>
+
+        <div class="side-actions right">
+          <button class="round-btn" id="clearPreviewBtn" type="button" title="Вернуться к камере">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"></path><path d="M21 4v6h-6"></path></svg>
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <section class="view page-view" id="view-history">
+      <div class="page-inner">
+        <div class="page-title">
+          <div>
+            <h2>История</h2>
+            <p>Последние распознавания сохраняются локально в браузере через localStorage.</p>
+          </div>
+          <button class="btn bad" id="clearHistoryBtn" type="button">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M4 7h16"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M6 7l1 13h10l1-13"></path><path d="M9 7V4h6v3"></path></svg>
+            Очистить
+          </button>
+        </div>
+        <div class="panel glass">
+          <div class="history-list" id="historyList"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view page-view" id="view-api">
+      <div class="page-inner">
+        <div class="page-title">
+          <div>
+            <h2>API-ключ</h2>
+            <p>У каждого пользователя свой ключ Gemini. В коде нет ключа разработчика.</p>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="panel glass">
+            <h3>Быстрая настройка</h3>
+            <p>Для распознавания объектов нужен бесплатный Gemini API Key.</p>
+            <ol class="step-list">
+              <li><span class="step-num">1</span><span>Перейди на сайт Google AI Studio.</span></li>
+              <li><span class="step-num">2</span><span>Войди в аккаунт Google.</span></li>
+              <li><span class="step-num">3</span><span>Создай бесплатный API Key.</span></li>
+              <li><span class="step-num">4</span><span>Скопируй ключ и вставь его ниже.</span></li>
+            </ol>
+            <a class="btn primary" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M14 4h6v6"></path><path d="M20 4 10 14"></path><path d="M20 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h4"></path></svg>
+              Получить бесплатный API Key
+            </a>
+          </div>
+
+          <div class="panel glass">
+            <h3>Мой ключ</h3>
+            <p>Ключ хранится только в localStorage этого браузера.</p>
+            <div class="key-card">
+              <div>
+                <div class="hint" style="font-size:12px;margin-bottom:5px">Сохранённый ключ</div>
+                <div class="key-mask" id="keyMask">Ключ не сохранён</div>
+              </div>
+              <button class="mini-btn" id="toggleKeyVisibilityBtn" type="button">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                Показать
+              </button>
+            </div>
+            <input id="apiKeyInput" autocomplete="off" spellcheck="false" placeholder="Вставь Gemini API Key" />
+            <div class="btn-row">
+              <button class="btn good" id="saveKeyBtn" type="button">
+                <svg class="icon" viewBox="0 0 24 24"><path d="m20 6-11 11-5-5"></path></svg>
+                Сохранить
+              </button>
+              <button class="btn" id="checkKeyBtn" type="button">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"></path><path d="M21 4v6h-6"></path></svg>
+                Проверить
+              </button>
+              <button class="btn bad" id="deleteKeyBtn" type="button">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M4 7h16"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M6 7l1 13h10l1-13"></path><path d="M9 7V4h6v3"></path></svg>
+                Удалить
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel glass">
+          <h3>PWA</h3>
+          <p>Манифест создаётся прямо из этого файла. Установка доступна там, где браузер разрешает установку PWA. Для настоящего service worker-офлайна веб-стандарт требует отдельный файл sw.js, поэтому в одном HTML доступен только офлайн-интерфейс из кэша браузера.</p>
+          <div class="btn-row">
+            <button class="btn" id="installBtn" type="button" disabled>
+              <svg class="icon" viewBox="0 0 24 24"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg>
+              Установить приложение
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <aside class="result-sheet glass" id="resultSheet" aria-live="polite">
+    <div class="sheet-head">
+      <img class="sheet-thumb" id="sheetThumb" alt="Фото объекта" />
+      <div class="sheet-title">
+        <h2 id="sheetTitle">Результат анализа</h2>
+        <p id="sheetSubtitle">Объект распознан</p>
+      </div>
+      <button class="round-btn" id="closeResultBtn" type="button" title="Закрыть результат">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+      </button>
+    </div>
+    <div class="sheet-body" id="resultContent"></div>
+  </aside>
+
+  <div class="toast" id="toast"></div>
+  <canvas id="captureCanvas" class="hidden"></canvas>
+
+  <script>
+    "use strict";
+
+    /* ============================================================
+       Быстрые помощники для DOM, localStorage и безопасного вывода.
+       ============================================================ */
+
+    const $ = (selector, root = document) => root.querySelector(selector);
+    const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+
+    const STORAGE_KEY = "what_is_price_gemini_key_v4";
+    const HISTORY_KEY = "what_is_price_history_v4";
+    const MODEL = "gemini-2.5-flash";
+
+    const app = $("#app");
+    const video = $("#video");
+    const previewImage = $("#previewImage");
+    const cameraPlaceholder = $("#cameraPlaceholder");
+    const cameraPlaceholderText = $("#cameraPlaceholderText");
+    const retryCameraBtn = $("#retryCameraBtn");
+    const galleryBtn = $("#galleryBtn");
+    const fileInput = $("#fileInput");
+    const shutterBtn = $("#shutterBtn");
+    const clearPreviewBtn = $("#clearPreviewBtn");
+    const apiHint = $("#apiHint");
+    const keyDot = $("#keyDot");
+    const keyStateText = $("#keyStateText");
+    const keyMask = $("#keyMask");
+    const apiKeyInput = $("#apiKeyInput");
+    const saveKeyBtn = $("#saveKeyBtn");
+    const checkKeyBtn = $("#checkKeyBtn");
+    const deleteKeyBtn = $("#deleteKeyBtn");
+    const toggleKeyVisibilityBtn = $("#toggleKeyVisibilityBtn");
+    const historyList = $("#historyList");
+    const clearHistoryBtn = $("#clearHistoryBtn");
+    const resultSheet = $("#resultSheet");
+    const resultContent = $("#resultContent");
+    const sheetThumb = $("#sheetThumb");
+    const sheetTitle = $("#sheetTitle");
+    const sheetSubtitle = $("#sheetSubtitle");
+    const closeResultBtn = $("#closeResultBtn");
+    const toastEl = $("#toast");
+    const captureCanvas = $("#captureCanvas");
+    const installBtn = $("#installBtn");
+
+    let cameraStream = null;
+    let lastImageDataUrl = "";
+    let lastResultBundle = null;
+    let deferredInstallPrompt = null;
+    let keyVisible = false;
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function toast(message) {
+      toastEl.textContent = message;
+      toastEl.classList.add("show");
+      clearTimeout(toastEl._timer);
+      toastEl._timer = setTimeout(() => toastEl.classList.remove("show"), 2600);
+    }
+
+    function getKey() {
+      return localStorage.getItem(STORAGE_KEY) || "";
+    }
+
+    function setKey(key) {
+      localStorage.setItem(STORAGE_KEY, key.trim());
+      refreshKeyUi();
+    }
+
+    function removeKey() {
+      localStorage.removeItem(STORAGE_KEY);
+      apiKeyInput.value = "";
+      keyVisible = false;
+      refreshKeyUi();
+    }
+
+    function maskKey(key) {
+      if (!key) return "Ключ не сохранён";
+      if (key.length <= 10) return key.slice(0, 3) + "****";
+      return key.slice(0, 4) + "****" + key.slice(-4);
+    }
+
+    function refreshKeyUi() {
+      const key = getKey();
+      const hasKey = Boolean(key);
+      keyDot.classList.toggle("ok", hasKey);
+      keyStateText.textContent = hasKey ? "Ключ готов" : "Нет ключа";
+      keyMask.textContent = hasKey ? (keyVisible ? key : maskKey(key)) : "Ключ не сохранён";
+      apiHint.classList.toggle("hidden", hasKey);
+      toggleKeyVisibilityBtn.disabled = !hasKey;
+    }
+
+    /* ============================================================
+       Переключение вкладок. История и API отдельные, камера остаётся чистой.
+       ============================================================ */
+
+    function switchTab(tab) {
+      $$(".tab-btn").forEach(btn => btn.classList.toggle("active", btn.dataset.tab === tab));
+      $$(".view").forEach(view => view.classList.remove("active"));
+      $(`#view-${tab}`).classList.add("active");
+      if (tab === "history") renderHistory();
+
+      // Если уже есть сделанный снимок или загруженное фото, не перезапускаем камеру.
+      // Так кадр не пропадает и не превращается обратно в живое видео после анализа.
+      if (tab === "camera" && !hasFrozenPreview()) startCamera();
+    }
+
+    $$(".tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+    });
+
+    $$('[data-open-api]').forEach(btn => {
+      btn.addEventListener("click", () => switchTab("api"));
+    });
+
+    /* ============================================================
+       Камера. Сайт пытается включить её сразу после запуска.
+       ============================================================ */
+
+    async function startCamera() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        cameraPlaceholder.classList.remove("hidden");
+        cameraPlaceholderText.textContent = "Этот браузер не поддерживает доступ к камере. Используй загрузку фото из галереи.";
+        return;
+      }
+
+      try {
+        cameraPlaceholder.classList.remove("hidden");
+        cameraPlaceholderText.textContent = "Запрашиваю доступ к камере.";
+
+        if (cameraStream) stopCamera();
+
+        // На телефонах используем заднюю камеру, чтобы удобно наводить на предметы.
+        const constraints = {
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
+          },
+          audio: false
+        };
+
+        cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = cameraStream;
+        await video.play();
+        previewImage.classList.add("hidden");
+        cameraPlaceholder.classList.add("hidden");
+      } catch (err) {
+        cameraPlaceholder.classList.remove("hidden");
+        cameraPlaceholderText.textContent = "Камера не запустилась. Разреши доступ в браузере или загрузи фото из галереи.";
+        toast("Не удалось включить камеру");
+      }
+    }
+
+    function stopCamera() {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream = null;
+      }
+      video.pause();
+      video.srcObject = null;
+    }
+
+    function hasFrozenPreview() {
+      return !previewImage.classList.contains("hidden") && Boolean(previewImage.getAttribute("src"));
+    }
+
+    async function capturePhoto() {
+      if (app.classList.contains("analyzing")) return;
+
+      if (!getKey()) {
+        toast("Сначала добавь Gemini API Key");
+        switchTab("api");
+        return;
+      }
+
+      let imageDataUrl = "";
+
+      // Если пользователь загрузил фото, анализируем именно его.
+      if (!previewImage.classList.contains("hidden") && previewImage.src) {
+        imageDataUrl = previewImage.src;
+      } else {
+        if (!cameraStream || !video.videoWidth || !video.videoHeight) {
+          toast("Камера ещё не готова");
+          await startCamera();
+          return;
+        }
+
+        const w = video.videoWidth;
+        const h = video.videoHeight;
+        captureCanvas.width = w;
+        captureCanvas.height = h;
+        const ctx = captureCanvas.getContext("2d");
+
+        // Берём реальный кадр с камеры без зеркального отражения.
+        ctx.drawImage(video, 0, 0, w, h);
+        imageDataUrl = captureCanvas.toDataURL("image/jpeg", .88);
+        previewImage.src = imageDataUrl;
+        previewImage.classList.remove("hidden");
+
+        // Полностью останавливаем поток после затвора: пользователь видит именно снятый кадр,
+        // а не продолжающееся live-видео под интерфейсом.
+        stopCamera();
+      }
+
+      lastImageDataUrl = imageDataUrl;
+      await analyzeImage(imageDataUrl);
+    }
+
+    function clearPreview() {
+      lastImageDataUrl = "";
+      previewImage.removeAttribute("src");
+      previewImage.classList.add("hidden");
+      resultSheet.classList.remove("open");
+      startCamera();
+    }
+
+    galleryBtn.addEventListener("click", () => fileInput.click());
+    retryCameraBtn.addEventListener("click", startCamera);
+    clearPreviewBtn.addEventListener("click", clearPreview);
+    shutterBtn.addEventListener("click", capturePhoto);
+
+    fileInput.addEventListener("change", async () => {
+      const file = fileInput.files?.[0];
+      if (!file) return;
+      if (!file.type.startsWith("image/")) {
+        toast("Выбери изображение");
+        return;
+      }
+      const imageDataUrl = await fileToOptimizedDataUrl(file);
+      previewImage.src = imageDataUrl;
+      previewImage.classList.remove("hidden");
+      lastImageDataUrl = imageDataUrl;
+
+      // При выборе фото из галереи live-камера больше не нужна.
+      stopCamera();
+
+      if (!getKey()) {
+        toast("Фото загружено. Теперь добавь API-ключ для анализа");
+        switchTab("api");
+        return;
+      }
+      await analyzeImage(imageDataUrl);
+    });
+
+    function fileToOptimizedDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error("Не удалось прочитать файл"));
+        reader.onload = () => {
+          const img = new Image();
+          img.onerror = () => reject(new Error("Не удалось открыть изображение"));
+          img.onload = () => {
+            const maxSide = 1600;
+            const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+            const w = Math.round(img.width * scale);
+            const h = Math.round(img.height * scale);
+            const canvas = document.createElement("canvas");
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL("image/jpeg", .88));
+          };
+          img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    /* ============================================================
+       Gemini API. Запрос идёт напрямую из браузера пользователя.
+       Цены просим только в рублях.
+       ============================================================ */
+
+    function dataUrlToInlineData(dataUrl) {
+      const [header, base64] = dataUrl.split(",");
+      const mime = header.match(/data:(.*?);base64/)?.[1] || "image/jpeg";
+      return { mimeType: mime, data: base64 };
+    }
+
+    function buildPrompt() {
+      return `
+Ты — эксперт по распознаванию объектов на фото и оценке рыночной стоимости в России.
+
+Главное правило: все цены выводи только в российских рублях. Не используй доллары, евро, USD, EUR и другие валюты.
+
+Проанализируй объект, который находится ближе всего к центру изображения и попадает в прицел. Если на фото несколько объектов, выбери центральный главный объект.
+
+Верни только валидный JSON без markdown и без пояснений вне JSON.
+
+Структура JSON:
+{
+  "object_name": "название объекта",
+  "object_type": "тип объекта",
+  "category": "категория",
+  "possible_model": "возможная модель или null",
+  "confidence_percent": 0,
+  "description": "краткое описание",
+  "price": {
+    "new_price_rub": "примерная цена нового объекта в ₽",
+    "used_price_rub": "примерная цена б/у объекта в ₽",
+    "market_range_rub": "рыночный диапазон в ₽",
+    "price_note": "короткое пояснение точности оценки"
+  },
+  "approximation_warning": true,
+  "is_car": false,
+  "car": {
+    "brand": null,
+    "model": null,
+    "generation": null,
+    "years": null,
+    "body_type": null,
+    "engine_type": null,
+    "power": null,
+    "used_average_price_rub": null,
+    "new_average_price_rub": null,
+    "facts": []
+  },
+  "is_tech": false,
+  "tech": {
+    "manufacturer": null,
+    "model": null,
+    "release_year": null,
+    "main_specs": [],
+    "new_price_rub": null,
+    "used_price_rub": null
+  }
+}
+
+Если объект невозможно оценить точно, approximation_warning поставь true и напиши: "Цена определена приблизительно на основе анализа изображения."
+Если это автомобиль, обязательно заполни блок car.
+Если это смартфон, планшет, ноутбук, компьютер, телевизор или игровая приставка, обязательно заполни блок tech.
+`.trim();
+    }
+
+    async function callGemini({ key, imageDataUrl = "", text = "" }) {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${encodeURIComponent(key)}`;
+      const parts = [];
+
+      if (text) parts.push({ text });
+      if (imageDataUrl) {
+        const inline = dataUrlToInlineData(imageDataUrl);
+        parts.push({ inline_data: { mime_type: inline.mimeType, data: inline.data } });
+      }
+
+      const body = {
+        contents: [{ role: "user", parts }],
+        generationConfig: {
+          temperature: 0.25,
+          topP: 0.9,
+          maxOutputTokens: 4096,
+          response_mime_type: "application/json"
+        }
+      };
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        const message = payload?.error?.message || `Ошибка Gemini API: HTTP ${response.status}`;
+        throw new Error(message);
+      }
+
+      return payload;
+    }
+
+    async function testApiKey(key) {
+      const cleanKey = key.trim();
+      if (!cleanKey) throw new Error("Вставь API-ключ");
+      await callGemini({
+        key: cleanKey,
+        text: "Верни JSON {\"ok\":true}."
+      });
+      return true;
+    }
+
+    function extractGeminiText(payload) {
+      return payload?.candidates?.[0]?.content?.parts
+        ?.map(part => part.text || "")
+        .join("\n")
+        .trim() || "";
+    }
+
+    function parseJsonFromText(text) {
+      const clean = text
+        .replace(/^```json\s*/i, "")
+        .replace(/^```\s*/i, "")
+        .replace(/```$/i, "")
+        .trim();
+
+      try { return JSON.parse(clean); } catch {}
+
+      const start = clean.indexOf("{");
+      const end = clean.lastIndexOf("}");
+      if (start !== -1 && end !== -1 && end > start) {
+        return JSON.parse(clean.slice(start, end + 1));
+      }
+      throw new Error("Gemini вернул ответ не в формате JSON");
+    }
+
+    async function analyzeImage(imageDataUrl) {
+      const key = getKey();
+      if (!key) {
+        toast("Сначала добавь Gemini API Key");
+        switchTab("api");
+        return;
+      }
+
+      app.classList.add("analyzing");
+      shutterBtn.disabled = true;
+      toast("Анализирую объект");
+
+      try {
+        const payload = await callGemini({ key, imageDataUrl, text: buildPrompt() });
+        const text = extractGeminiText(payload);
+        const result = normalizeResult(parseJsonFromText(text));
+        const bundle = {
+          id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+          date: new Date().toISOString(),
+          image: imageDataUrl,
+          result
+        };
+        lastResultBundle = bundle;
+        saveHistoryItem(bundle);
+        renderResult(bundle);
+        switchTab("camera");
+        resultSheet.classList.add("open");
+        toast("Готово");
+      } catch (err) {
+        toast(err.message || "Ошибка анализа");
+        console.error(err);
+      } finally {
+        app.classList.remove("analyzing");
+        shutterBtn.disabled = false;
+      }
+    }
+
+    function safeText(value, fallback = "Не определено") {
+      if (value === null || value === undefined || value === "") return fallback;
+      if (Array.isArray(value)) return value.filter(Boolean).join(", ") || fallback;
+      return String(value);
+    }
+
+    function normalizeResult(raw) {
+      const price = raw?.price || {};
+      const car = raw?.car || {};
+      const tech = raw?.tech || {};
+
+      return {
+        object_name: safeText(raw?.object_name || raw?.name, "Объект"),
+        object_type: safeText(raw?.object_type || raw?.type),
+        category: safeText(raw?.category),
+        possible_model: safeText(raw?.possible_model || raw?.model),
+        confidence_percent: Number(raw?.confidence_percent || raw?.confidence || 0),
+        description: safeText(raw?.description, "Описание не найдено"),
+        price: {
+          new_price_rub: safeText(price.new_price_rub || price.new || price.new_price),
+          used_price_rub: safeText(price.used_price_rub || price.used || price.used_price),
+          market_range_rub: safeText(price.market_range_rub || price.market_range || price.range),
+          price_note: safeText(price.price_note || price.note || (raw?.approximation_warning ? "Цена определена приблизительно на основе анализа изображения." : "Оценка приблизительная."))
+        },
+        approximation_warning: Boolean(raw?.approximation_warning),
+        is_car: Boolean(raw?.is_car),
+        car: {
+          brand: safeText(car.brand, "—"),
+          model: safeText(car.model, "—"),
+          generation: safeText(car.generation, "—"),
+          years: safeText(car.years, "—"),
+          body_type: safeText(car.body_type, "—"),
+          engine_type: safeText(car.engine_type, "—"),
+          power: safeText(car.power, "—"),
+          used_average_price_rub: safeText(car.used_average_price_rub, "—"),
+          new_average_price_rub: safeText(car.new_average_price_rub, "—"),
+          facts: Array.isArray(car.facts) ? car.facts.filter(Boolean) : []
+        },
+        is_tech: Boolean(raw?.is_tech),
+        tech: {
+          manufacturer: safeText(tech.manufacturer, "—"),
+          model: safeText(tech.model, "—"),
+          release_year: safeText(tech.release_year, "—"),
+          main_specs: Array.isArray(tech.main_specs) ? tech.main_specs.filter(Boolean) : [],
+          new_price_rub: safeText(tech.new_price_rub, "—"),
+          used_price_rub: safeText(tech.used_price_rub, "—")
+        }
+      };
+    }
+
+    /* ============================================================
+       Рендер результата, история, копирование, шаринг и скачивание.
+       ============================================================ */
+
+    function renderResult(bundle) {
+      const r = bundle.result;
+      const price = r.price;
+      sheetThumb.src = bundle.image;
+      sheetTitle.textContent = r.object_name;
+      sheetSubtitle.textContent = `${r.category} · уверенность ${Math.round(r.confidence_percent || 0)}%`;
+
+      const carHtml = r.is_car ? `
+        <div class="description-box">
+          <strong>Режим автомобиля</strong><br>
+          Марка: ${escapeHtml(r.car.brand)}<br>
+          Модель: ${escapeHtml(r.car.model)}<br>
+          Поколение: ${escapeHtml(r.car.generation)}<br>
+          Годы выпуска: ${escapeHtml(r.car.years)}<br>
+          Кузов: ${escapeHtml(r.car.body_type)}<br>
+          Двигатель: ${escapeHtml(r.car.engine_type)}<br>
+          Мощность: ${escapeHtml(r.car.power)}<br>
+          Средняя цена б/у: ${escapeHtml(r.car.used_average_price_rub)}<br>
+          Средняя цена нового: ${escapeHtml(r.car.new_average_price_rub)}
+          ${r.car.facts.length ? `<br><br><strong>Факты:</strong><br>${r.car.facts.map(f => `— ${escapeHtml(f)}`).join("<br>")}` : ""}
+        </div>` : "";
+
+      const techHtml = r.is_tech ? `
+        <div class="description-box">
+          <strong>Режим техники</strong><br>
+          Производитель: ${escapeHtml(r.tech.manufacturer)}<br>
+          Модель: ${escapeHtml(r.tech.model)}<br>
+          Год выпуска: ${escapeHtml(r.tech.release_year)}<br>
+          Цена нового: ${escapeHtml(r.tech.new_price_rub)}<br>
+          Цена б/у: ${escapeHtml(r.tech.used_price_rub)}
+          ${r.tech.main_specs.length ? `<br><br><strong>Характеристики:</strong><br>${r.tech.main_specs.map(s => `— ${escapeHtml(s)}`).join("<br>")}` : ""}
+        </div>` : "";
+
+      resultContent.innerHTML = `
+        ${r.approximation_warning ? `
+          <div class="warn-box">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M10.3 4.5 2.6 18a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 4.5a2 2 0 0 0-3.4 0Z"></path></svg>
+            <span>Цена определена приблизительно на основе анализа изображения.</span>
+          </div>` : ""}
+
+        <div class="data-grid">
+          <div class="data-card"><div class="k">Название</div><div class="v">${escapeHtml(r.object_name)}</div></div>
+          <div class="data-card"><div class="k">Тип</div><div class="v">${escapeHtml(r.object_type)}</div></div>
+          <div class="data-card"><div class="k">Категория</div><div class="v">${escapeHtml(r.category)}</div></div>
+          <div class="data-card"><div class="k">Модель</div><div class="v">${escapeHtml(r.possible_model)}</div></div>
+          <div class="data-card"><div class="k">Новый</div><div class="v">${escapeHtml(price.new_price_rub)}</div></div>
+          <div class="data-card"><div class="k">Б/у</div><div class="v">${escapeHtml(price.used_price_rub)}</div></div>
+          <div class="data-card"><div class="k">Диапазон</div><div class="v">${escapeHtml(price.market_range_rub)}</div></div>
+          <div class="data-card"><div class="k">Уверенность</div><div class="v">${Math.round(r.confidence_percent || 0)}%</div></div>
+        </div>
+
+        <div class="description-box">${escapeHtml(r.description)}</div>
+        <div class="description-box"><strong>Точность оценки:</strong><br>${escapeHtml(price.price_note)}</div>
+        ${carHtml}
+        ${techHtml}
+
+        <div class="btn-row">
+          <button class="btn primary" id="shareResultBtn" type="button">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"></path><path d="M12 16V3"></path><path d="m7 8 5-5 5 5"></path></svg>
+            Поделиться
+          </button>
+          <button class="btn" id="copyResultBtn" type="button">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M8 8h10v12H8z"></path><path d="M6 16H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"></path></svg>
+            Скопировать
+          </button>
+          <button class="btn" id="downloadResultBtn" type="button">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg>
+            Скачать картинку
+          </button>
+          <button class="btn good" id="againBtn" type="button">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"></path><path d="M21 4v6h-6"></path></svg>
+            Анализировать снова
+          </button>
+        </div>
+      `;
+
+      $("#shareResultBtn").addEventListener("click", shareResult);
+      $("#copyResultBtn").addEventListener("click", copyResult);
+      $("#downloadResultBtn").addEventListener("click", downloadResultImage);
+      $("#againBtn").addEventListener("click", () => analyzeImage(lastImageDataUrl || bundle.image));
+    }
+
+    function resultToText(bundle = lastResultBundle) {
+      if (!bundle) return "";
+      const r = bundle.result;
+      const lines = [
+        `Что это: ${r.object_name}`,
+        `Тип: ${r.object_type}`,
+        `Категория: ${r.category}`,
+        `Модель: ${r.possible_model}`,
+        `Уверенность: ${Math.round(r.confidence_percent || 0)}%`,
+        `Цена нового: ${r.price.new_price_rub}`,
+        `Цена б/у: ${r.price.used_price_rub}`,
+        `Диапазон рынка: ${r.price.market_range_rub}`,
+        `Описание: ${r.description}`,
+        `Примечание: ${r.price.price_note}`
+      ];
+      if (r.is_car) {
+        lines.push(
+          "",
+          "Автомобиль:",
+          `Марка: ${r.car.brand}`,
+          `Модель: ${r.car.model}`,
+          `Поколение: ${r.car.generation}`,
+          `Годы выпуска: ${r.car.years}`,
+          `Кузов: ${r.car.body_type}`,
+          `Двигатель: ${r.car.engine_type}`,
+          `Мощность: ${r.car.power}`,
+          `Средняя цена б/у: ${r.car.used_average_price_rub}`,
+          `Средняя цена нового: ${r.car.new_average_price_rub}`
+        );
+      }
+      if (r.is_tech) {
+        lines.push(
+          "",
+          "Техника:",
+          `Производитель: ${r.tech.manufacturer}`,
+          `Модель: ${r.tech.model}`,
+          `Год выпуска: ${r.tech.release_year}`,
+          `Цена нового: ${r.tech.new_price_rub}`,
+          `Цена б/у: ${r.tech.used_price_rub}`
+        );
+      }
+      return lines.join("\n");
+    }
+
+    async function copyResult() {
+      await navigator.clipboard.writeText(resultToText());
+      toast("Результат скопирован");
+    }
+
+    async function shareResult() {
+      const text = resultToText();
+      if (navigator.share) {
+        await navigator.share({ title: "Что это и сколько стоит?", text }).catch(() => {});
+      } else {
+        await navigator.clipboard.writeText(text);
+        toast("Результат скопирован для отправки");
+      }
+    }
+
+    async function downloadResultImage() {
+      const bundle = lastResultBundle;
+      if (!bundle) return;
+      const r = bundle.result;
+      const canvas = document.createElement("canvas");
+      canvas.width = 1080;
+      canvas.height = 1450;
+      const ctx = canvas.getContext("2d");
+
+      const gradient = ctx.createLinearGradient(0, 0, 1080, 1450);
+      gradient.addColorStop(0, "#10162a");
+      gradient.addColorStop(.55, "#09202a");
+      gradient.addColorStop(1, "#05070f");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const img = await loadImage(bundle.image);
+      coverImage(ctx, img, 70, 70, 940, 600, 36);
+
+      ctx.fillStyle = "rgba(255,255,255,.92)";
+      ctx.font = "800 54px system-ui, -apple-system, Segoe UI, Arial";
+      wrapCanvasText(ctx, r.object_name, 70, 760, 940, 66);
+
+      ctx.fillStyle = "rgba(255,255,255,.68)";
+      ctx.font = "500 31px system-ui, -apple-system, Segoe UI, Arial";
+      wrapCanvasText(ctx, `${r.category} · уверенность ${Math.round(r.confidence_percent || 0)}%`, 70, 900, 940, 42);
+
+      drawCanvasCard(ctx, 70, 1000, 940, 300);
+      ctx.fillStyle = "rgba(255,255,255,.7)";
+      ctx.font = "600 28px system-ui, -apple-system, Segoe UI, Arial";
+      ctx.fillText("Оценка в рублях", 110, 1065);
+      ctx.fillStyle = "rgba(255,255,255,.95)";
+      ctx.font = "850 38px system-ui, -apple-system, Segoe UI, Arial";
+      wrapCanvasText(ctx, `Новый: ${r.price.new_price_rub}`, 110, 1130, 860, 48);
+      wrapCanvasText(ctx, `Б/у: ${r.price.used_price_rub}`, 110, 1190, 860, 48);
+      wrapCanvasText(ctx, `Диапазон: ${r.price.market_range_rub}`, 110, 1250, 860, 48);
+
+      ctx.fillStyle = "rgba(255,255,255,.5)";
+      ctx.font = "500 24px system-ui, -apple-system, Segoe UI, Arial";
+      ctx.fillText("Сделано в приложении “Что это и сколько стоит?”", 70, 1380);
+
+      const link = document.createElement("a");
+      link.download = `result-${Date.now()}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+      toast("Изображение скачано");
+    }
+
+    function loadImage(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = src;
+      });
+    }
+
+    function roundedRectPath(ctx, x, y, w, h, r) {
+      const rr = Math.min(r, w / 2, h / 2);
+      ctx.beginPath();
+      ctx.moveTo(x + rr, y);
+      ctx.arcTo(x + w, y, x + w, y + h, rr);
+      ctx.arcTo(x + w, y + h, x, y + h, rr);
+      ctx.arcTo(x, y + h, x, y, rr);
+      ctx.arcTo(x, y, x + w, y, rr);
+      ctx.closePath();
+    }
+
+    function coverImage(ctx, img, x, y, w, h, r) {
+      const scale = Math.max(w / img.width, h / img.height);
+      const sw = w / scale;
+      const sh = h / scale;
+      const sx = (img.width - sw) / 2;
+      const sy = (img.height - sh) / 2;
+      ctx.save();
+      roundedRectPath(ctx, x, y, w, h, r);
+      ctx.clip();
+      ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+      ctx.restore();
+    }
+
+    function drawCanvasCard(ctx, x, y, w, h) {
+      ctx.save();
+      roundedRectPath(ctx, x, y, w, h, 34);
+      ctx.fillStyle = "rgba(255,255,255,.11)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,.18)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight) {
+      const words = String(text).split(" ");
+      let line = "";
+      let yy = y;
+      for (const word of words) {
+        const test = line ? `${line} ${word}` : word;
+        if (ctx.measureText(test).width > maxWidth && line) {
+          ctx.fillText(line, x, yy);
+          line = word;
+          yy += lineHeight;
+        } else {
+          line = test;
+        }
+      }
+      if (line) ctx.fillText(line, x, yy);
+      return yy;
+    }
+
+    function getHistory() {
+      try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]"); }
+      catch { return []; }
+    }
+
+    function saveHistory(history) {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 40)));
+    }
+
+    function saveHistoryItem(bundle) {
+      const history = getHistory();
+      history.unshift(bundle);
+      saveHistory(history);
+    }
+
+    function renderHistory() {
+      const history = getHistory();
+      if (!history.length) {
+        historyList.innerHTML = `<div class="hint">История пока пустая. Сделай снимок на вкладке камеры.</div>`;
+        return;
+      }
+      historyList.innerHTML = history.map(item => {
+        const r = item.result || {};
+        const date = new Date(item.date).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+        return `
+          <button class="history-card" type="button" data-history-id="${escapeHtml(item.id)}">
+            <img src="${escapeHtml(item.image)}" alt="${escapeHtml(r.object_name || "Фото")}">
+            <div style="text-align:left;min-width:0">
+              <h3>${escapeHtml(r.object_name || "Объект")}</h3>
+              <div class="history-meta">
+                <span>${escapeHtml(r.category || "Категория")}</span>
+                <span>${escapeHtml(date)}</span>
+              </div>
+            </div>
+            <span class="price-chip">${escapeHtml(r.price?.market_range_rub || r.price?.used_price_rub || "Цена неизвестна")}</span>
+          </button>`;
+      }).join("");
+
+      $$("[data-history-id]", historyList).forEach(card => {
+        card.addEventListener("click", () => {
+          const item = getHistory().find(x => x.id === card.dataset.historyId);
+          if (!item) return;
+          lastResultBundle = item;
+          lastImageDataUrl = item.image;
+          previewImage.src = item.image;
+          previewImage.classList.remove("hidden");
+          renderResult(item);
+          switchTab("camera");
+          resultSheet.classList.add("open");
+        });
+      });
+    }
+
+    clearHistoryBtn.addEventListener("click", () => {
+      saveHistory([]);
+      renderHistory();
+      toast("История очищена");
+    });
+
+    closeResultBtn.addEventListener("click", () => resultSheet.classList.remove("open"));
+
+    /* ============================================================
+       API-ключ: сохранение, проверка, удаление, маска.
+       ============================================================ */
+
+    saveKeyBtn.addEventListener("click", async () => {
+      const key = apiKeyInput.value.trim();
+      if (!key) return toast("Вставь API-ключ");
+      saveKeyBtn.disabled = true;
+      try {
+        await testApiKey(key);
+        setKey(key);
+        toast("API-ключ сохранён");
+        switchTab("camera");
+      } catch (err) {
+        toast(err.message || "Ключ не прошёл проверку");
+      } finally {
+        saveKeyBtn.disabled = false;
+      }
+    });
+
+    checkKeyBtn.addEventListener("click", async () => {
+      const key = apiKeyInput.value.trim() || getKey();
+      if (!key) return toast("Ключ не найден");
+      checkKeyBtn.disabled = true;
+      try {
+        await testApiKey(key);
+        toast("Ключ работает");
+      } catch (err) {
+        toast(err.message || "Ключ не работает");
+      } finally {
+        checkKeyBtn.disabled = false;
+      }
+    });
+
+    deleteKeyBtn.addEventListener("click", () => {
+      removeKey();
+      toast("API-ключ удалён");
+    });
+
+    toggleKeyVisibilityBtn.addEventListener("click", () => {
+      keyVisible = !keyVisible;
+      toggleKeyVisibilityBtn.innerHTML = keyVisible
+        ? `<svg class="icon" viewBox="0 0 24 24"><path d="M3 3l18 18"></path><path d="M10.6 10.6A2 2 0 0 0 12 14a2 2 0 0 0 1.4-.6"></path><path d="M9.9 5.2A9.2 9.2 0 0 1 12 5c6.5 0 10 7 10 7a17.4 17.4 0 0 1-2.4 3.3"></path><path d="M6.6 6.6C3.5 8.5 2 12 2 12s3.5 7 10 7a9.5 9.5 0 0 0 4.2-1"></path></svg> Скрыть`
+        : `<svg class="icon" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"></path><circle cx="12" cy="12" r="3"></circle></svg> Показать`;
+      refreshKeyUi();
+    });
+
+    /* ============================================================
+       PWA: manifest в одном HTML. Полноценный service worker требует sw.js.
+       ============================================================ */
+
+    function setupPwaManifest() {
+      const iconSvg = encodeURIComponent(`
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+          <defs>
+            <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#7c5cff"/>
+              <stop offset="1" stop-color="#55d7ff"/>
+            </linearGradient>
+          </defs>
+          <rect width="512" height="512" rx="120" fill="#05070f"/>
+          <path d="M104 290c0-103 83-186 186-186h118v118c0 103-83 186-186 186H104V290Z" fill="url(#g)"/>
+          <path d="M172 340 340 172" stroke="white" stroke-width="32" stroke-linecap="round"/>
+          <path d="M190 194h128v128" fill="none" stroke="white" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>`);
+
+      const manifest = {
+        name: "Что это и сколько стоит?",
+        short_name: "Что стоит",
+        description: "Камера + Gemini Vision + оценка стоимости в рублях",
+        start_url: "./index.html",
+        scope: "./",
+        display: "standalone",
+        orientation: "portrait",
+        background_color: "#05070f",
+        theme_color: "#05070f",
+        icons: [
+          { src: `data:image/svg+xml,${iconSvg}`, sizes: "192x192", type: "image/svg+xml", purpose: "any maskable" },
+          { src: `data:image/svg+xml,${iconSvg}`, sizes: "512x512", type: "image/svg+xml", purpose: "any maskable" }
+        ]
+      };
+
+      const blob = new Blob([JSON.stringify(manifest)], { type: "application/manifest+json" });
+      const link = document.createElement("link");
+      link.rel = "manifest";
+      link.href = URL.createObjectURL(blob);
+      document.head.appendChild(link);
+
+      const appleIcon = document.createElement("link");
+      appleIcon.rel = "apple-touch-icon";
+      appleIcon.href = `data:image/svg+xml,${iconSvg}`;
+      document.head.appendChild(appleIcon);
+    }
+
+    window.addEventListener("beforeinstallprompt", event => {
+      event.preventDefault();
+      deferredInstallPrompt = event;
+      installBtn.disabled = false;
+    });
+
+    installBtn.addEventListener("click", async () => {
+      if (!deferredInstallPrompt) {
+        toast("Установка недоступна в этом браузере");
+        return;
+      }
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      installBtn.disabled = true;
+    });
+
+    /* ============================================================
+       Запуск приложения.
+       ============================================================ */
+
+    document.addEventListener("visibilitychange", () => {
+      // Не выключаем камеру на активной вкладке камеры, чтобы при возврате всё было готово.
+      if (document.hidden) return;
+      if ($("#view-camera").classList.contains("active")) startCamera();
+    });
+
+    setupPwaManifest();
+    refreshKeyUi();
+    renderHistory();
+    startCamera();
+  </script>
+</body>
+</html>
