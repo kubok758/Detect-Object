@@ -1,0 +1,26 @@
+{
+  "name": "Что это и сколько стоит?",
+  "short_name": "Что стоит?",
+  "description": "Камера, Gemini Vision и примерная оценка стоимости объекта в рублях.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#050816",
+  "theme_color": "#050816",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
